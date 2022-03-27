@@ -1,11 +1,13 @@
 Shader "Luftprut/Lava Lamp" {
-	Properties {
-		_Glossiness ("Smoothness", Range(0,1)) = 0.9
-		_Metallic ("Metallic", Range(0,1)) = 0
-		_Color ("Color", Color) = (0,0,0,1)
-		[HDR]_LavaColor ("Lava Color", Color) = (1,1,1,1)
-		_LavaBottomTopSeparation ("Lava Bottom and Top Separation", Range(0, 0.5)) = 0.3
-		_LavaWholeSphereRadius ("Lava Encapsulating Sphere Radius", Range(0, 1)) = 0.45
+	Properties{
+		_Glossiness("Smoothness", Range(0,1)) = 0.9
+		_Metallic("Metallic", Range(0,1)) = 0
+		_Color("Color", Color) = (0,0,0,1)
+		[HDR]_LavaColor("Lava Color", Color) = (1,1,1,1)
+		_LavaBottomTopSeparation("Lava Bottom and Top Separation", Range(0, 1)) = 0.3
+		_LavaWholeSphereRadius("Lava Encapsulating Sphere Radius", Range(0, 2)) = 0.45
+		_LavaWholeSphereRadiusTwo("Lava Stretch", Range(0,2)) = 0.45
+		_LavaCentre("Lava Centre Offset", Range(-2,2)) = 0.0
 		_LavaBallSize ("Lava Ball Size", Range(0, 1)) = 0.175
 		_LavaScrollSpeed ("Lave Scroll Speed", Float) = 0.1
 		_LavaAttenuation ("Internal Fog Density", Float) = 4
@@ -55,6 +57,8 @@ Shader "Luftprut/Lava Lamp" {
 		fixed4 _LavaColor;
 		float _LavaBottomTopSeparation;
 		float _LavaWholeSphereRadius;
+		float _LavaWholeSphereRadiusTwo;
+		float _LavaCentre;
 		float _LavaScrollSpeed;
 		float _LavaBallSize;
 		float _LavaAttenuation;
@@ -70,6 +74,7 @@ Shader "Luftprut/Lava Lamp" {
 
 		float4 _Ball4;
 		float _Ball4_time;
+
 		float _Seed;
 		float _Glow;
 		float _LiquidGlow;
@@ -102,19 +107,27 @@ Shader "Luftprut/Lava Lamp" {
 			float3 ball2pos = float3(_Ball2[0], 4 * frac(_Ball2_time + _Time.y * _LavaScrollSpeed * _Ball2[1] * _Ball2[3]*_Seed) - 2, _Ball2[2]);
 			float3 ball3pos = float3(_Ball3[0], 4 * frac(_Ball3_time + _Time.y * _LavaScrollSpeed * _Ball3[1] * _Ball3[3]*_Seed) - 2, _Ball3[2]);
 			float3 ball4pos = float3(_Ball4[0], 4 * frac(_Ball4_time + _Time.y * _LavaScrollSpeed * _Ball4[1] * _Ball4[3]*_Seed) - 2, _Ball4[2]);
-	
+
 			float sdf_balls = length(objSpacePos - ball1pos);
 			sdf_balls = smin(sdf_balls, length(objSpacePos - ball2pos));
 			sdf_balls = smin(sdf_balls, length(objSpacePos - ball3pos));
 
-			float distance = sdf_balls - _LavaBallSize;
-
+			float distance = sdf_balls - (_LavaBallSize);
 			// Top and bottom
 			distance = smin(distance, min(_LavaBottomTopSeparation - objSpacePos.y, objSpacePos.y + _LavaBottomTopSeparation));
-
+			float3 sep = distance;
 			// Encapsulating sphere
 			distance = max(distance, length(objSpacePos) - _LavaWholeSphereRadius - EPSILON);
 
+			//To enable Lava Stretch factor
+			float3 p = objSpacePos;
+			p.y += _LavaCentre;
+
+			p.y -= clamp(p.y, 0.0, _LavaWholeSphereRadiusTwo);
+		
+			float3 cyl = length(p) - _LavaWholeSphereRadius;
+			cyl = max(cyl, min(_LavaBottomTopSeparation - objSpacePos.y, objSpacePos.y + _LavaBottomTopSeparation));
+			distance = min(cyl, distance);
 			return distance;
 		}
 
